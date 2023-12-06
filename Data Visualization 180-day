@@ -1,0 +1,15 @@
+########################
+# Prepare the Survey Data File
+########################
+
+import pandas as pd
+import re
+import datetime as dt
+
+# display all columns in dataframe
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+
+# import the data
+df = pd.read_csv("Quality of Hire Dummy Data/Quality of Hire Survey -180 Days Cleaning.csv", header=0, skiprows=[1,2])
+df.info()

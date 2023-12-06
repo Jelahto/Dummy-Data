@@ -1,0 +1,180 @@
+
+#### Created with Python 3.9.12
+#### by Mark Mazurkiewicz, 2023
+
+########################
+# Prepare the Survey Data File
+########################
+
+import pandas as pd
+import re
+import datetime as dt
+
+# display all columns in dataframe
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+
+# import the data
+df = pd.read_csv("Quality of Hire Survey - Version 2_August 17, 2023_09.24.csv", header=0, skiprows=[1,2])
+df.info()
+
+########################
+# Correct Variable Names
+########################
+
+# change all variables to snake_case
+snake_case = re.compile(r'(?<!^)(?=[A-Z])')
+new_columns = [snake_case.sub('_', item).lower() for item in list(df.columns)]
+
+# create a list of variable names to modify
+vars_to_change = [("i_p_address", "ip_address"),("duration (in seconds)", "duration_seconds"), ("recipient_last_name", "employee_last_name" ), ("recipient_first_name", "employee_first_name"), ("recipient_email", "manager_email"), ("external_reference", "employee_id"), ("rater_name_1", "rater_firstname"), ("rater_name_2", "rater_lastname"), ("rater_name_3", "rater_email_entered"), ("manager_email", "manager_email_auto"), ("employee_email", "employee_email_auto"), ("manager_i_d", "manager_id_auto"), ("external_data_reference", "employee_id_auto"), ("demonstrates__l_ps", "demonstrates_lps")]
+
+# helper function to do the modification
+def changeNames(new_columns, vars_to_change):
+    for idx, name in enumerate(new_columns):
+      newVar = [item[1] for item in vars_to_change if item[0] == name]
+      if(newVar):
+          print("New Var is", newVar)
+          new_columns[idx] = newVar[0]
+    return new_columns
+
+# apply the function
+df.columns = changeNames(new_columns, vars_to_change)
+df.columns
+
+########################
+# Converting to datetime objects
+########################
+
+print("Converting start_date and end_date to datetime")
+df['start_date'] = pd.to_datetime(df['start_date'])
+df['end_date'] = pd.to_datetime(df['end_date'])
+
+########################
+# Data Cleaning and Variable Creation
+########################
+
+# filter out Status = 'Survey Preview'
+df = df[df['status'] != "Survey Preview"]
+df = df[df['finished'] != False]
+df[df['status'] == "Survey Preview"]
+df[df['finished'] == False]
+
+# filter out cases where we have the wrong manager, or they managed a person for x < 1 month
+df[(df['is_manager'] == "No, I am not this person's manager") | (df['howlong_managed'] == "One month or less")]
+df = df[~(df['is_manager'] == "No, I am not this person's manager")]
+df = df[~(df['howlong_managed'] == "One month or less")]
+
+# Convert the responses to numbers
+def my_recode(item):
+    if item == "Strongly Agree":
+        return 5
+    elif item == "Agree":
+        return 4
+    elif item == "Neither Agree Nor Disagree":
+        return 3
+    elif item == "Disagree":
+        return 2
+    elif item == "Strongly Disagree":
+        return 1
+    else:
+        return None
+
+# create new columns
+print("Creating numerical variables ... ")
+df['has_background_num'] = df.has_background.apply(my_recode)
+df['has_skills_num'] = df.has_skills.apply(my_recode)
+df['produced_quality_num'] = df.produced_quality.apply(my_recode)
+df['works_well_oth_num'] = df.works_well_oth.apply(my_recode)
+df['is_motivated_num'] = df.is_motivated.apply(my_recode)
+df['demonstrates_lps_num'] = df.demonstrates_lps.apply(my_recode)
+df['correct_job_level_num'] = df.correct_job_level.apply(my_recode)
+df['will_succeed_num'] = df.will_succeed.apply(my_recode)
+df['hire_again_num'] = df.hire_again.apply(my_recode)
+df['raises_bar_num'] = df.raises_bar.apply(my_recode)
+df['top_performer_num'] = df.top_performer.apply(my_recode)
+
+print("Here are the final columns")
+pd.DataFrame(df.columns).to_clipboard()
+
+# The employeeIDs are not floats so we will convert them
+df['employee_id'] = df["employee_id"].astype('int')
+
+# Pull out ids for querying in DataGrip
+db_query_ids = []
+for item in df['employee_id']:
+    db_query_ids.append(f"'{item}'")     
+final_query = "(" + ",".join(db_query_ids) + ")"
+pd.DataFrame([final_query]).to_clipboard(index=False, header=False)
+
+# Run the query in DataGrip and then load file here
+df_dem = pd.read_csv('qoh_demographics.csv', header=0)
+pd.DataFrame(df_dem.columns)
+
+# merge
+df_merged = df.merge(df_dem, how="left", left_on='employee_id', right_on='worker_id')
+df = df_merged.copy()
+
+# Let's fix the datetime hire dates
+df['original_hire_date'] = pd.to_datetime(df['original_hire_date'])
+df['last_hire_date'] = pd.to_datetime(df['last_hire_date'])
+
+# Calculate Quality of Hire Score
+# Convert to 1 - 100 
+df['raw_qoh_score'] = df.loc[:, ['has_background_num', 'has_skills_num', 'produced_qualty_num', 'works_well_oth_num', 'is_motivated_num', 'demonstrates_lps_num', 'correct_job_level_num', 'will_succeed_num', 'hire_again_num', 'raises_bar_num', 'top_performer_num' ]].sum(axis=1)
+
+# OldRange = (OldMax - OldMin) 55 - 11 = 44  
+# NewRange = (NewMax - NewMin) 100 - 1 = 99
+# NewValue = (((OldValue - OldMin) * NewRange) / OldRange) + NewMin
+# NewValue = (((x - 11) * 99) / 44) + 1
+df['qoh_score'] = df['raw_qoh_score'].apply(lambda x: (((x - 11) * 99) / 44) + 1)
+
+
+# ##############################################
+# ##############################################
+# ##############################################
+
+# Here is a function that calculates QoH Score by 
+# 	Supervisory Organization
+# 	Job Family 
+
+def grouped_mean_for(df, group):
+    df1 = df[group].value_counts().reset_index()
+    df1.columns = [group, "count"]
+    df2 = df.groupby(group)['qoh_score'].mean().reset_index()
+    df3 = df1.merge(df2, how="left", on=group)
+    df3 = df3.sort_values('qoh_score', ascending=False)
+    df3 = df3.set_index(pd.Index(range(1, len(df3)+1)))
+    return df3
+
+# use .to_clipboard() to paste into Excel
+df['qoh_score'].describe()
+grouped_mean_for(df, 'cost_center_tier1').to_clipboard()
+grouped_mean_for(df, 'job_family').to_clipboard()
+grouped_mean_for(df, 'employee_category').to_clipboard()
+grouped_mean_for(df, 'job_level_wd').to_clipboard()
+
+# ##############################################
+# ##############################################
+# ##############################################
+
+# Time Series
+# Here's how you group for time series analysis
+df.groupby(['last_hire_date'])['qoh_score'].mean().to_clipboard()
+df.groupby(['last_hire_date', 'job_family'])['qoh_score'].mean().to_clipboard()
+
+# I could create a dict object and fill it with families
+# But I don't need to do that unless I'm exporting it to front-end of some kind
+def time_series_family(family):
+    result = df[df['job_family'] == family].groupby(['last_hire_date', 'job_family'])['qoh_score'].mean()
+    result.to_clipboard()
+    return result
+
+# TODO
+
+### #############################
+# today = dt.date.today().strftime("%Y-%m-%d")
+# file_name = f"merged_dataset_{today}.csv"
+# df.to_csv(file_name, header=True, index=False)
+### #############################
+
