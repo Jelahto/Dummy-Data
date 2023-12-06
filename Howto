@@ -1,0 +1,115 @@
+GitHub Copilot: To organize and clean up your Jupyter notebook, you can follow these steps:
+
+1. **Group related cells:** Group related code cells together. For example, all data loading cells can be grouped together, all data cleaning cells can be grouped together, etc.
+
+2. **Use markdown cells for explanations:** Use markdown cells to explain what each group of cells is doing. This will make it easier for others (and for you in the future) to understand what the code is doing.
+
+3. **Remove unnecessary cells:** If there are any cells that are not needed (like cells used for debugging or testing), remove them.
+
+4. **Order the cells logically:** The cells should be ordered in a way that someone else could run the notebook from top to bottom without encountering any errors.
+
+5. **Consistent coding style:** Use a consistent coding style. This makes the code easier to read.
+
+Here's an example of how you can organize your notebook:
+
+```python
+# Markdown cell: Explanation of what the next cells will do
+
+# Code cell: Import necessary libraries
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Load the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Clean the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Analyze the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Visualize the results
+```
+
+Remember, the goal is to make the notebook easy to understand for someone who is seeing it for the first time.
+
+
+ Markdown cell: Explanation of what the next cells will do
+
+# Code cell: Import necessary libraries
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Load the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Clean the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Analyze the data
+
+# Markdown cell: Explanation of the next cells
+
+# Code cell: Visualize the results
+
+###The Following are examples of how to organize the code
+
+# Markdown cell: Explanation of the next cells
+# "In the following cells, we're converting the responses in various dataframes from text to numerical values."
+
+# Code cell: Convert columns to numeric
+df_list = [df_reliability, df_skills_factor_items, df_blue_lps_factor_items, df_level_fit_factor_items, df_overall_rate_factor_items]
+df_names = ['df_reliability', 'df_skills_factor_items', 'df_blue_lps_factor_items', 'df_level_fit_factor_items', 'df_overall_rate_factor_items']
+
+for df, name in zip(df_list, df_names):
+    df.replace({
+        'Strongly Agree': 5,
+        'Agree': 4,
+        'Neither Agree or Disagree': 3,
+        'Disagree': 2,
+        'Strongly Disagree': 1
+    }, inplace=True)
+    df.astype(float, inplace=True)
+
+# Markdown cell: Explanation of the next cells
+# "Now, we're calculating Cronbach's alpha for each dataframe to measure the reliability of our scale."
+
+# Code cell: Calculate Cronbach's alpha
+for df, name in zip(df_list, df_names):
+    print(f"The reliability of {name} = ", pg.cronbach_alpha(df))
+
+You can visualize the calculated Cronbach's alpha values using a bar plot. Here's how you can do it:
+
+First, store the Cronbach's alpha values in a dictionary:
+
+```python
+cronbach_alpha_values = {
+    'df_reliability': pg.cronbach_alpha(df_reliability)[0],
+    'df_skills_factor_items': pg.cronbach_alpha(df_skills_factor_items)[0],
+    'df_blue_lps_factor_items': pg.cronbach_alpha(df_blue_lps_factor_items)[0],
+    'df_level_fit_factor_items': pg.cronbach_alpha(df_level_fit_factor_items)[0],
+    'df_overall_rate_factor_items': pg.cronbach_alpha(df_overall_rate_factor_items)[0]
+}
+```
+
+Then, convert the dictionary to a pandas DataFrame and plot it:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df_alpha = pd.DataFrame(list(cronbach_alpha_values.items()), columns=['DataFrame', 'Cronbach Alpha'])
+df_alpha.set_index('DataFrame', inplace=True)
+
+df_alpha.plot(kind='bar', legend=False)
+plt.ylabel('Cronbach Alpha')
+plt.title('Cronbach Alpha for each DataFrame')
+plt.show()
+```
+
+This will create a bar plot with the dataframes on the x-axis and the Cronbach's alpha values on the y-axis.
