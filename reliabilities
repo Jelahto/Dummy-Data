@@ -1,0 +1,13 @@
+90 Day:
+The reliability of the overall scale =  (0.9234816366290163, array([0.91 , 0.936]))
+df_skills_factor_items =  (0.8501534193602625, array([0.812, 0.881]))
+df_blue_lps_factor_items =  (0.7493094593656742, array([0.685, 0.801]))
+df_level_fit_factor_items =  (0.6155411731184106, array([0.517, 0.694]))
+df_overall_rate_factor_items =  (0.7919777521671594, array([0.739, 0.834]))
+
+180-Day:
+The reliability of the overall scale =  (0.9352447728175927, array([0.909, 0.956]))
+df_skills_factor_items =  (0.835930339138405, array([0.731, 0.9  ]))
+df_blue_lps_factor_items =  (0.5728222996515682, array([0.3  , 0.739]))
+df_level_fit_factor_items =  (0.6645739910313901, array([0.45 , 0.795]))
+df_overall_rate_factor_items =  (0.8304368248003764, array([0.722, 0.897]))
